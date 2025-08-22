@@ -1,7 +1,8 @@
+// frontend/src/App.tsx
+
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-// A mesma interface do backend, garantindo a tipagem dos dados recebidos
 interface Produto {
   id: number;
   nome: string;
@@ -9,51 +10,83 @@ interface Produto {
 }
 
 function App() {
-  // Estado para armazenar a lista de produtos
   const [produtos, setProdutos] = useState<Produto[]>([]);
-  // Estado para gerenciar o estado de carregamento
   const [carregando, setCarregando] = useState<boolean>(true);
+  const [novoProdutoNome, setNovoProdutoNome] = useState('');
+  const [novoProdutoPreco, setNovoProdutoPreco] = useState('');
 
-  // O hook useEffect é executado uma vez, quando o componente é montado
-  useEffect(() => {
-    // Função assíncrona para buscar os produtos no backend
-    const buscarProdutos = async () => {
-      try {
-        // Faz a requisição GET para a API do Express
-        const resposta = await fetch('http://localhost:3001/api/produtos');
-
-        // Se a resposta não for OK, lança um erro
-        if (!resposta.ok) {
-          throw new Error('Erro ao buscar os produtos!');
-        }
-
-        // Converte a resposta para JSON, que será tipado como 'Produto[]'
-        const dados: Produto[] = await resposta.json();
-
-        // Atualiza o estado com os produtos recebidos
-        setProdutos(dados);
-      } catch (erro) {
-        console.error("Houve um erro:", erro);
-      } finally {
-        // Garante que o estado de carregamento seja atualizado, mesmo em caso de erro
-        setCarregando(false);
+  // Função para buscar os produtos no backend
+  const buscarProdutos = async () => {
+    try {
+      const resposta = await fetch('http://localhost:3001/api/produtos');
+      if (!resposta.ok) {
+        throw new Error('Erro ao buscar os produtos!');
       }
-    };
+      const dados: Produto[] = await resposta.json();
+      setProdutos(dados);
+    } catch (erro) {
+      console.error("Houve um erro:", erro);
+    } finally {
+      setCarregando(false);
+    }
+  };
 
-    // Chama a função para buscar os produtos
+  // Efeito para buscar os produtos quando o componente é montado
+  useEffect(() => {
     buscarProdutos();
-  }, []); // O array vazio indica que este efeito deve ser executado apenas uma vez
+  }, []);
+
+  // Nova função para adicionar um produto via API
+  const handleAdicionarProduto = async (event: React.FormEvent) => {
+    event.preventDefault(); // Evita o recarregamento da página
+
+    // Validação básica do formulário
+    if (!novoProdutoNome || !novoProdutoPreco) {
+      alert("Por favor, preencha todos os campos.");
+      return;
+    }
+
+    try {
+      const produtoParaEnviar = {
+        nome: novoProdutoNome,
+        preco: parseFloat(novoProdutoPreco), // Converte a string para número
+      };
+
+      // Requisição POST para o backend
+      const resposta = await fetch('http://localhost:3001/api/produtos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(produtoParaEnviar), // Converte o objeto para JSON string
+      });
+
+      if (!resposta.ok) {
+        throw new Error('Erro ao adicionar o produto!');
+      }
+
+      const produtoAdicionado: Produto = await resposta.json();
+      
+      // Atualiza o estado da lista de produtos com o novo produto
+      setProdutos([...produtos, produtoAdicionado]);
+      
+      // Limpa os campos do formulário
+      setNovoProdutoNome('');
+      setNovoProdutoPreco('');
+
+    } catch (erro) {
+      console.error("Houve um erro:", erro);
+    }
+  };
 
   return (
     <div className="App">
       <header className="App-header">
         <h1>Lista de Produtos</h1>
-        {/* Renderização condicional com base no estado de carregamento */}
         {carregando ? (
           <p>Carregando produtos...</p>
         ) : (
           <ul>
-            {/* Mapeia a lista de produtos para renderizar um item de lista para cada um */}
             {produtos.map(produto => (
               <li key={produto.id}>
                 {produto.nome} - R${produto.preco.toFixed(2)}
@@ -61,6 +94,25 @@ function App() {
             ))}
           </ul>
         )}
+        
+        <hr style={{ width: '100%' }} />
+
+        <h2>Adicionar Novo Produto</h2>
+        <form onSubmit={handleAdicionarProduto}>
+          <input 
+            type="text"
+            placeholder="Nome do produto"
+            value={novoProdutoNome}
+            onChange={(e) => setNovoProdutoNome(e.target.value)}
+          />
+          <input
+            type="number"
+            placeholder="Preço"
+            value={novoProdutoPreco}
+            onChange={(e) => setNovoProdutoPreco(e.target.value)}
+          />
+          <button type="submit">Adicionar</button>
+        </form>
       </header>
     </div>
   );
