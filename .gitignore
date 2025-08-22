@@ -1,0 +1,9 @@
+# Node
+node_modules
+.DS_Store
+
+# Express
+backend/dist
+
+# Frontend
+frontend/build
